@@ -3,156 +3,159 @@ import 'package:provider/provider.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import '../providers/settings_provider.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
-  SettingsScreenState createState() => SettingsScreenState();
-}
-
-class SettingsScreenState extends State<SettingsScreen> {
-  @override
   Widget build(BuildContext context) {
-    final settings = Provider.of<SettingsProvider>(context);
+    final settingsProvider = Provider.of<SettingsProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Configurações')),
+      appBar: AppBar(
+        title: const Text('Configurações'),
+      ),
       body: ListView(
-        children: [
-          SwitchListTile(
-            title: const Text('Terminar jogo com 3 sets vencidos'),
-            value: settings.endGameAtThreeSets,
-            onChanged: (value) {
-              settings.setEndGameAtThreeSets(value);
+        padding: const EdgeInsets.all(16.0),
+        children: <Widget>[
+          _buildThemeSelector(context, settingsProvider),
+          const Divider(),
+          _buildColorPicker(
+            context,
+            'Cor do Time A',
+            settingsProvider.teamAColor,
+            (color) => settingsProvider.setTeamAColor(color),
+          ),
+          _buildColorPicker(
+            context,
+            'Cor do Time B',
+            settingsProvider.teamBColor,
+            (color) => settingsProvider.setTeamBColor(color),
+          ),
+          _buildColorPicker(
+            context,
+            'Cor da Fonte',
+            settingsProvider.fontColor,
+            (color) => settingsProvider.setFontColor(color),
+          ),
+          const Divider(),
+          _buildNumberInput(
+            context,
+            'Pontuação Máxima',
+            settingsProvider.maxScore.toString(),
+            (value) {
+              final newScore = int.tryParse(value);
+              if (newScore != null) {
+                settingsProvider.setMaxScore(newScore);
+              }
             },
           ),
-          ListTile(
-            title: const Text('Tempos por Set'),
-            trailing: DropdownButton<int>(
-              value: settings.timeoutsPerSet,
-              items: [0, 1, 2, 3].map((timeouts) {
-                return DropdownMenuItem(
-                  value: timeouts,
-                  child: Text(timeouts.toString()),
-                );
-              }).toList(),
-              onChanged: (timeouts) {
-                if (timeouts != null) {
-                  settings.setTimeoutsPerSet(timeouts);
-                }
-              },
-            ),
-          ),
-          SwitchListTile(
-            title: const Text('Marcar pontuação por jogador'),
-            value: settings.trackPlayerStats,
-            onChanged: (value) {
-              settings.setTrackPlayerStats(value);
+          _buildNumberInput(
+            context,
+            'Tempos por Set',
+            settingsProvider.timeoutsPerSet.toString(),
+            (value) {
+              final newTimeouts = int.tryParse(value);
+              if (newTimeouts != null) {
+                settingsProvider.setTimeoutsPerSet(newTimeouts);
+              }
             },
-          ),
-          ListTile(
-            title: const Text('Tema'),
-            trailing: DropdownButton<ThemeMode>(
-              value: settings.themeMode,
-              items: const [
-                DropdownMenuItem(
-                  value: ThemeMode.system,
-                  child: Text('Sistema'),
-                ),
-                DropdownMenuItem(value: ThemeMode.light, child: Text('Claro')),
-                DropdownMenuItem(value: ThemeMode.dark, child: Text('Escuro')),
-              ],
-              onChanged: (mode) {
-                if (mode != null) {
-                  settings.setThemeMode(mode);
-                }
-              },
-            ),
-          ),
-          ListTile(
-            title: const Text('Cor do Time A'),
-            trailing: CircleAvatar(backgroundColor: settings.teamAColor),
-            onTap: () => _pickColor(context, settings, 'teamA'),
-          ),
-          ListTile(
-            title: const Text('Cor do Time B'),
-            trailing: CircleAvatar(backgroundColor: settings.teamBColor),
-            onTap: () => _pickColor(context, settings, 'teamB'),
-          ),
-          ListTile(
-            title: const Text('Cor da Fonte'),
-            trailing: CircleAvatar(backgroundColor: settings.fontColor),
-            onTap: () => _pickColor(context, settings, 'font'),
-          ),
-          ListTile(
-            title: const Text('Cor do Fundo'),
-            trailing: CircleAvatar(backgroundColor: settings.backgroundColor),
-            onTap: () => _pickColor(context, settings, 'background'),
           ),
         ],
       ),
     );
   }
 
-  void _pickColor(
-    BuildContext context,
-    SettingsProvider settings,
-    String type,
-  ) {
-    Color currentColor;
-    switch (type) {
-      case 'teamA':
-        currentColor = settings.teamAColor;
-        break;
-      case 'teamB':
-        currentColor = settings.teamBColor;
-        break;
-      case 'font':
-        currentColor = settings.fontColor;
-        break;
-      case 'background':
-        currentColor = settings.backgroundColor;
-        break;
-      default:
-        currentColor = Colors.white;
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Escolha uma cor'),
-          content: SingleChildScrollView(
-            child: MaterialPicker(
-              pickerColor: currentColor,
-              onColorChanged: (color) {
-                switch (type) {
-                  case 'teamA':
-                    settings.setTeamAColor(color);
-                    break;
-                  case 'teamB':
-                    settings.setTeamBColor(color);
-                    break;
-                  case 'font':
-                    settings.setFontColor(color);
-                    break;
-                  case 'background':
-                    settings.setBackgroundColor(color);
-                    break;
-                }
-              },
-            ),
+  Widget _buildThemeSelector(BuildContext context, SettingsProvider settingsProvider) {
+    return ListTile(
+      title: const Text('Tema'),
+      trailing: DropdownButton<ThemeMode>(
+        value: settingsProvider.themeMode,
+        onChanged: (ThemeMode? newValue) {
+          if (newValue != null) {
+            settingsProvider.setThemeMode(newValue);
+          }
+        },
+        items: const [
+          DropdownMenuItem(
+            value: ThemeMode.system,
+            child: Text('Sistema'),
           ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('FECHAR'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
+          DropdownMenuItem(
+            value: ThemeMode.light,
+            child: Text('Claro'),
+          ),
+          DropdownMenuItem(
+            value: ThemeMode.dark,
+            child: Text('Escuro'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildColorPicker(
+      BuildContext context,
+      String title,
+      Color currentColor,
+      Function(Color) onColorChanged,
+      ) {
+    return ListTile(
+      title: Text(title),
+      trailing: GestureDetector(
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: Text('Escolha uma cor'),
+                content: SingleChildScrollView(
+                  child: MaterialPicker(
+                    pickerColor: currentColor,
+                    onColorChanged: onColorChanged,
+                  ),
+                ),
+                actions: <Widget>[
+                  TextButton(
+                    child: const Text('OK'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ],
+              );
+            },
+          );
+        },
+        child: Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: currentColor,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.grey),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNumberInput(
+      BuildContext context,
+      String label,
+      String value,
+      Function(String) onChanged,
+      ) {
+    return ListTile(
+      title: Text(label),
+      trailing: SizedBox(
+        width: 80,
+        child: TextField(
+          controller: TextEditingController(text: value),
+          keyboardType: TextInputType.number,
+          textAlign: TextAlign.right,
+          onSubmitted: onChanged,
+        ),
+      ),
     );
   }
 }

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-
-import '../models/player.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../providers/settings_provider.dart';
+import '../widgets/timer_widget.dart';
+import 'settings_screen.dart';
+import 'team_builder_screen.dart';
 
 class PlacarScreen extends StatefulWidget {
   final List<Map<String, dynamic>> teams;
@@ -15,26 +19,26 @@ class PlacarScreen extends StatefulWidget {
 class PlacarScreenState extends State<PlacarScreen> {
   int _scoreA = 0;
   int _scoreB = 0;
+  int _timeoutsA = 0;
+  int _timeoutsB = 0;
   late Timer _timer;
   int _start = 300; // 5 minutos em segundos
-  String _timeA = "Time A";
-  String _timeB = "Time B";
-  List<Player> _playersA = [];
-  List<Player> _playersB = [];
+  final String _timeA = "A";
+  final String _timeB = "B";
+  bool _isTimerRunning = false;
+  bool _isCountdownVisible = false;
 
   @override
   void initState() {
     super.initState();
-    startTimer();
-    if (widget.teams.isNotEmpty) {
-      _playersA = (widget.teams[0]['players'] as List<dynamic>).cast<Player>().toList();
-      if (widget.teams.length > 1) {
-        _playersB = (widget.teams[1]['players'] as List<dynamic>).cast<Player>().toList();
-      }
-    }
+    // Não inicia o timer automaticamente
   }
 
   void startTimer() {
+    if (_isTimerRunning) return;
+    setState(() {
+      _isTimerRunning = true;
+    });
     const oneSec = Duration(seconds: 1);
     _timer = Timer.periodic(
       oneSec,
@@ -42,6 +46,7 @@ class PlacarScreenState extends State<PlacarScreen> {
         if (_start == 0) {
           setState(() {
             timer.cancel();
+            _isTimerRunning = false;
           });
         } else {
           setState(() {
@@ -52,23 +57,35 @@ class PlacarScreenState extends State<PlacarScreen> {
     );
   }
 
+  void pauseTimer() {
+    if (_isTimerRunning) {
+      _timer.cancel();
+      setState(() {
+        _isTimerRunning = false;
+      });
+    }
+  }
+
   @override
   void dispose() {
-    _timer.cancel();
+    if (_isTimerRunning) {
+      _timer.cancel();
+    }
     super.dispose();
   }
 
-  void _incrementScore(int team) {
+  void _incrementScore(int team, int maxScore) {
     setState(() {
       if (team == 0) {
-        _scoreA++;
+        if (_scoreA < maxScore) _scoreA++;
       } else {
-        _scoreB++;
+        if (_scoreB < maxScore) _scoreB++;
       }
     });
   }
 
   void _decrementScore(int team) {
+    HapticFeedback.mediumImpact();
     setState(() {
       if (team == 0 && _scoreA > 0) {
         _scoreA--;
@@ -82,12 +99,44 @@ class PlacarScreenState extends State<PlacarScreen> {
     setState(() {
       _scoreA = 0;
       _scoreB = 0;
+      _timeoutsA = 0;
+      _timeoutsB = 0;
     });
   }
 
   void _resetTimer() {
+    pauseTimer();
     setState(() {
       _start = 300;
+    });
+  }
+
+  void _useTimeout(int team) {
+    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+    setState(() {
+      if (team == 0) {
+        if (_timeoutsA < settingsProvider.timeoutsPerSet) {
+          _timeoutsA++;
+          _showCountdown();
+        }
+      } else {
+        if (_timeoutsB < settingsProvider.timeoutsPerSet) {
+          _timeoutsB++;
+          _showCountdown();
+        }
+      }
+    });
+  }
+
+  void _showCountdown() {
+    setState(() {
+      _isCountdownVisible = true;
+    });
+  }
+
+  void _hideCountdown() {
+    setState(() {
+      _isCountdownVisible = false;
     });
   }
 
@@ -99,101 +148,189 @@ class PlacarScreenState extends State<PlacarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final settingsProvider = Provider.of<SettingsProvider>(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Placar'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              _resetScores();
-              _resetTimer();
-            },
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Row(
+              children: [
+                _buildTeamColumn(0, _timeA, _scoreA, settingsProvider.teamAColor, settingsProvider.fontColor, settingsProvider.maxScore, settingsProvider.timeoutsPerSet),
+                _buildMiddleColumn(),
+                _buildTeamColumn(1, _timeB, _scoreB, settingsProvider.teamBColor, settingsProvider.fontColor, settingsProvider.maxScore, settingsProvider.timeoutsPerSet),
+              ],
+            ),
           ),
+          if (_isCountdownVisible)
+            TimerWidget(
+              duration: settingsProvider.timerDuration,
+              onTimerFinish: _hideCountdown,
+            ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              Text(
-                _timerString,
-                style: const TextStyle(
-                  fontSize: 60,
+    );
+  }
+
+  Widget _buildMiddleColumn() {
+    return Expanded(
+      flex: 6, // Flex menor para a coluna do meio
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Expanded(
+            child: FittedBox(
+              fit: BoxFit.contain,
+              child: Text(
+                'TEMPO',
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildTeamColumn(0, _timeA, _scoreA, _playersA),
-                  _buildTeamColumn(1, _timeB, _scoreB, _playersB),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTeamColumn(int teamIndex, String teamName, int score, List<Player> players) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(
-            teamName,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 10),
-          Text(
-            score.toString(),
-            style: const TextStyle(
-              fontSize: 100,
-              fontWeight: FontWeight.bold,
+          Expanded(
+            flex: 2,
+            child: FittedBox(
+              fit: BoxFit.contain,
+              child: Text(
+                _timerString,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.remove),
-                onPressed: () => _decrementScore(teamIndex),
-              ),
-              IconButton(
-                icon: const Icon(Icons.add),
-                onPressed: () => _incrementScore(teamIndex),
-              ),
-            ],
+          Expanded(
+            flex: 2,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: Icon(_isTimerRunning ? Icons.pause_circle_filled : Icons.play_circle_filled),
+                      onPressed: () {
+                        if (_isTimerRunning) {
+                          pauseTimer();
+                        } else {
+                          startTimer();
+                        }
+                      },
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.refresh),
+                      onPressed: () {
+                        _resetScores();
+                        _resetTimer();
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 20),
-          _buildPlayerList(players),
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.people),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const TeamBuilderScreen()),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.settings),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildPlayerList(List<Player> players) {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: players.length,
-      itemBuilder: (context, index) {
-        final player = players[index];
-        return Card(
-          child: ListTile(
-            title: Text(player.name),
-            trailing: Text('(${player.habilidade})'),
+  Widget _buildTeamColumn(int teamIndex, String teamName, int score, Color color, Color fontColor, int maxScore, int timeoutsPerSet) {
+    int timeoutsUsed = teamIndex == 0 ? _timeoutsA : _timeoutsB;
+    return Expanded(
+      flex: 17, // Flex maior para as colunas dos times
+      child: GestureDetector(
+        onTap: () => _incrementScore(teamIndex, maxScore),
+        onLongPress: () => _decrementScore(teamIndex),
+        child: Card(
+          margin: const EdgeInsets.all(4),
+          color: color,
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Expanded(
+                  flex: 1, // Flex menor para o nome do time
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: Text(
+                      teamName,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                         color: fontColor,
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 5, // Flex maior para o placar
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: Text(
+                      score.toString(),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                         color: fontColor,
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 1,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: List.generate(timeoutsPerSet, (index) {
+                      return GestureDetector(
+                        onTap: () => _useTimeout(teamIndex),
+                        child: Icon(
+                          index < timeoutsUsed ? Icons.timer_off : Icons.timer,
+                          color: fontColor,
+                          size: 30,
+                        ),
+                      );
+                    }),
+                  ),
+                )
+              ],
+            ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

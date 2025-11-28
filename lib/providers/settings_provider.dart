@@ -2,26 +2,20 @@ import 'package:flutter/material.dart';
 
 class SettingsProvider with ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
-  Color _teamAColor = Colors.red[400]!;
-  Color _teamBColor = Colors.blue[400]!;
-  Color _fontColor = Colors.white;
-  String _teamAName = 'Time A';
-  String _teamBName = 'Time B';
-  bool _trackPlayerStats = false;
-  bool _endGameAtThreeSets = true;
+  Color _teamAColor = Colors.blue[100]!;
+  Color _teamBColor = Colors.red[100]!;
+  Color _fontColor = Colors.black;
+  int _maxScore = 25;
   int _timeoutsPerSet = 2;
-  Color _backgroundColor = Colors.white;
+  int _timerDuration = 30;
 
   ThemeMode get themeMode => _themeMode;
   Color get teamAColor => _teamAColor;
   Color get teamBColor => _teamBColor;
   Color get fontColor => _fontColor;
-  String get teamAName => _teamAName;
-  String get teamBName => _teamBName;
-  bool get trackPlayerStats => _trackPlayerStats;
-  bool get endGameAtThreeSets => _endGameAtThreeSets;
+  int get maxScore => _maxScore;
   int get timeoutsPerSet => _timeoutsPerSet;
-  Color get backgroundColor => _backgroundColor;
+  int get timerDuration => _timerDuration;
 
   void setThemeMode(ThemeMode mode) {
     _themeMode = mode;
@@ -43,33 +37,18 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void setTeamAName(String name) {
-    _teamAName = name;
+  void setMaxScore(int score) {
+    _maxScore = score;
     notifyListeners();
   }
 
-  void setTeamBName(String name) {
-    _teamBName = name;
+  void setTimeoutsPerSet(int timeouts) {
+    _timeoutsPerSet = timeouts;
     notifyListeners();
   }
 
-  void setTrackPlayerStats(bool value) {
-    _trackPlayerStats = value;
-    notifyListeners();
-  }
-
-  void setEndGameAtThreeSets(bool value) {
-    _endGameAtThreeSets = value;
-    notifyListeners();
-  }
-
-  void setTimeoutsPerSet(int value) {
-    _timeoutsPerSet = value;
-    notifyListeners();
-  }
-
-  void setBackgroundColor(Color color) {
-    _backgroundColor = color;
+  void setTimerDuration(int duration) {
+    _timerDuration = duration;
     notifyListeners();
   }
 }

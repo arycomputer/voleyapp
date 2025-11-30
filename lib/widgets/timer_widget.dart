@@ -48,7 +48,7 @@ class _TimerWidgetState extends State<TimerWidget> {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.black.withOpacity(0.7),
+      color: Colors.black.withAlpha((255 * 0.7).round()),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

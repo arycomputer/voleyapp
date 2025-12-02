@@ -10,9 +10,7 @@ import 'team_management_screen.dart';
 import 'settings_screen.dart';
 
 class PlacarScreen extends StatefulWidget {
-  final List<Map<String, dynamic>> teams;
-
-  const PlacarScreen({super.key, required this.teams});
+  const PlacarScreen({super.key});
 
   @override
   PlacarScreenState createState() => PlacarScreenState();
@@ -37,8 +35,10 @@ class PlacarScreenState extends State<PlacarScreen> {
   @override
   void initState() {
     super.initState();
-    _teamAName = widget.teams.isNotEmpty ? widget.teams[0]['name'] : "Time A";
-    _teamBName = widget.teams.length > 1 ? widget.teams[1]['name'] : "Time B";
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+    final teams = playerProvider.teams;
+    _teamAName = teams.isNotEmpty ? teams[0]['name'] : "Time A";
+    _teamBName = teams.length > 1 ? teams[1]['name'] : "Time B";
   }
 
   void startTimer() {
@@ -365,6 +365,7 @@ class PlacarScreenState extends State<PlacarScreen> {
                   _setsA,
                   settingsProvider.teamAColor,
                   settingsProvider.fontColor,
+                  settingsProvider.scoreFontColorA,
                   settingsProvider.timeoutsPerSet,
                 ),
                 _buildMiddleColumn(),
@@ -375,14 +376,19 @@ class PlacarScreenState extends State<PlacarScreen> {
                   _setsB,
                   settingsProvider.teamBColor,
                   settingsProvider.fontColor,
+                  settingsProvider.scoreFontColorB,
                   settingsProvider.timeoutsPerSet,
                 ),
               ],
             ),
             if (_isCountdownVisible)
-              TimerWidget(
-                duration: settingsProvider.timerDuration,
-                onTimerFinish: _hideCountdown,
+              Consumer<SettingsProvider>(
+                builder: (context, settings, child) {
+                  return TimerWidget(
+                    duration: settings.timerDuration,
+                    onTimerFinish: _hideCountdown,
+                  );
+                },
               ),
           ],
         ),
@@ -394,7 +400,7 @@ class PlacarScreenState extends State<PlacarScreen> {
     return Expanded(
       flex: 6,
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           FittedBox(
             fit: BoxFit.scaleDown,
@@ -418,10 +424,12 @@ class PlacarScreenState extends State<PlacarScreen> {
               }
             },
           ),
-          const SizedBox(height: 10),
+          IconButton(
+            icon: const Icon(Icons.restart_alt),
+            onPressed: _showResetGameConfirmationDialog,
+          ),
           IconButton(
             icon: const Icon(Icons.settings),
-            iconSize: 30.0,
             onPressed: () {
               Navigator.push(
                 context,
@@ -429,16 +437,14 @@ class PlacarScreenState extends State<PlacarScreen> {
               );
             },
           ),
-          const SizedBox(height: 10),
           IconButton(
-            icon: const Icon(Icons.restart_alt),
-            iconSize: 30.0,
-            onPressed: _showResetGameConfirmationDialog,
+            icon: const Icon(Icons.manage_accounts),
+            onPressed: () {
+              _navigateToTeamManagement();
+            },
           ),
-          const SizedBox(height: 10),
           IconButton(
             icon: const Icon(Icons.group_add),
-            iconSize: 30.0,
             onPressed: () {
               Navigator.push(
                 context,
@@ -460,6 +466,7 @@ class PlacarScreenState extends State<PlacarScreen> {
     int setsWon,
     Color color,
     Color fontColor,
+    Color scoreFontColor,
     int timeoutsPerSet,
   ) {
     int timeoutsUsed = teamIndex == 0 ? _timeoutsA : _timeoutsB;
@@ -476,56 +483,58 @@ class PlacarScreenState extends State<PlacarScreen> {
             borderRadius: BorderRadius.circular(16.0),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  GestureDetector(
-                    onTap: () => _showTeamSelectionDialog(teamIndex),
-                    child: Text(
-                      teamName,
-                      style: TextStyle(
-                        fontSize: 32.0,
-                        fontWeight: FontWeight.bold,
-                        color: fontColor,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(setsWon, (index) {
-                      return Icon(
-                        Icons.sports_volleyball,
-                        color: fontColor,
-                        size: 24,
-                      );
-                    }),
-                  ),
-                  Text(
-                    score.toString(),
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              children: [
+                GestureDetector(
+                  onTap: () => _showTeamSelectionDialog(teamIndex),
+                  child: Text(
+                    teamName,
                     style: TextStyle(
-                      fontSize: 120.0,
+                      fontSize: 32.0,
                       fontWeight: FontWeight.bold,
                       color: fontColor,
                     ),
+                    textAlign: TextAlign.center,
                   ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(timeoutsPerSet, (index) {
-                      return IconButton(
-                        icon: Icon(
-                          index < timeoutsUsed ? Icons.timer_off : Icons.timer,
-                          color: fontColor,
-                          size: 30,
-                        ),
-                        onPressed: () => _useTimeout(teamIndex),
-                      );
-                    }),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(setsWon, (index) {
+                    return Icon(
+                      Icons.sports_volleyball,
+                      color: fontColor,
+                      size: 24,
+                    );
+                  }),
+                ),
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: Text(
+                      score.toString(),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: scoreFontColor,
+                        height: 1.0,
+                      ),
+                    ),
                   ),
-                ],
-              ),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(timeoutsPerSet, (index) {
+                    return IconButton(
+                      icon: Icon(
+                        index < timeoutsUsed ? Icons.timer_off : Icons.timer,
+                        color: fontColor,
+                        size: 30,
+                      ),
+                      onPressed: () => _useTimeout(teamIndex),
+                    );
+                  }),
+                ),
+              ],
             ),
           ),
         ),

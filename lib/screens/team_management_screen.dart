@@ -64,7 +64,7 @@ class TeamManagementScreen extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) =>
-                        PlacarScreen(teams: playerProvider.teams),
+                        const PlacarScreen(),
                   ),
                 );
               },

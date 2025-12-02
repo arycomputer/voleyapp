@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:flex_color_picker/flex_color_picker.dart';
 import '../providers/settings_provider.dart';
-import 'stats_screen.dart';
+import '../providers/theme_provider.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -10,76 +10,68 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settingsProvider = Provider.of<SettingsProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Configurações'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
-      body: ListView(
+      appBar: AppBar(title: const Text('Configurações')),
+      body: Padding(
         padding: const EdgeInsets.all(16.0),
-        children: <Widget>[
-          _buildSectionTitle(context, 'Aparência'),
-          _buildThemeSelector(context, settingsProvider),
-          const Divider(),
-          _buildColorPicker(
-            context,
-            'Cor do Time A',
-            settingsProvider.teamAColor,
-            (color) => settingsProvider.setTeamAColor(color),
-          ),
-          _buildColorPicker(
-            context,
-            'Cor do Time B',
-            settingsProvider.teamBColor,
-            (color) => settingsProvider.setTeamBColor(color),
-          ),
-          _buildColorPicker(
-            context,
-            'Cor da Fonte',
-            settingsProvider.fontColor,
-            (color) => settingsProvider.setFontColor(color),
-          ),
-          const Divider(),
-          _buildSectionTitle(context, 'Regras do Jogo'),
-          _buildNumberInput(
-            context,
-            'Pontuação Máxima',
-            settingsProvider.maxScore.toString(),
-            (value) {
-              final newScore = int.tryParse(value);
-              if (newScore != null) {
-                settingsProvider.setMaxScore(newScore);
-              }
-            },
-          ),
-          _buildNumberInput(
-            context,
-            'Tempos por Set',
-            settingsProvider.timeoutsPerSet.toString(),
-            (value) {
-              final newTimeouts = int.tryParse(value);
-              if (newTimeouts != null) {
-                settingsProvider.setTimeoutsPerSet(newTimeouts);
-              }
-            },
-          ),
-          const Divider(),
-          _buildSectionTitle(context, 'Estatísticas'),
-          ListTile(
-            title: const Text('Ver Estatísticas'),
-            trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const StatsScreen()),
-              );
-            },
-          ),
-        ],
+        child: ListView(
+          children: [
+            _buildSectionTitle(context, 'Pontuação e Tempo'),
+            _buildMaxScoreSetting(context, settingsProvider),
+            const SizedBox(height: 16),
+            _buildTimeoutsSetting(context, settingsProvider),
+            const SizedBox(height: 16),
+            _buildTimerDurationSetting(context, settingsProvider),
+            const Divider(height: 32, thickness: 1),
+            _buildSectionTitle(context, 'Cores das Equipes'),
+            _buildColorPicker(
+              context,
+              'Cor da Equipe A',
+              settingsProvider.teamAColor,
+              (color) => settingsProvider.setTeamAColor(color),
+            ),
+            const SizedBox(height: 16),
+            _buildColorPicker(
+              context,
+              'Cor da Equipe B',
+              settingsProvider.teamBColor,
+              (color) => settingsProvider.setTeamBColor(color),
+            ),
+            const Divider(height: 32, thickness: 1),
+            _buildSectionTitle(context, 'Aparência'),
+            _buildColorPicker(
+              context,
+              'Cor da Fonte',
+              settingsProvider.fontColor,
+              (color) => settingsProvider.setFontColor(color),
+            ),
+            const SizedBox(height: 16),
+            _buildColorPicker(
+              context,
+              'Cor de Fundo do App',
+              settingsProvider.backgroundColor,
+              (color) => settingsProvider.setBackgroundColor(color),
+            ),
+            const SizedBox(height: 16),
+            _buildColorPicker(
+              context,
+              'Cor da Fonte do Placar A',
+              settingsProvider.scoreFontColorA,
+              (color) => settingsProvider.setScoreFontColorA(color),
+            ),
+            const SizedBox(height: 16),
+            _buildColorPicker(
+              context,
+              'Cor da Fonte do Placar B',
+              settingsProvider.scoreFontColorB,
+              (color) => settingsProvider.setScoreFontColorB(color),
+            ),
+            const SizedBox(height: 16),
+            _buildThemeSetting(context, themeProvider),
+          ],
+        ),
       ),
     );
   }
@@ -91,33 +83,86 @@ class SettingsScreen extends StatelessWidget {
         title,
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
           fontWeight: FontWeight.bold,
-          color: Theme.of(context).colorScheme.primary,
+          color: Theme.of(context).colorScheme.secondary,
         ),
       ),
     );
   }
 
-  Widget _buildThemeSelector(
+  Widget _buildMaxScoreSetting(
     BuildContext context,
     SettingsProvider settingsProvider,
   ) {
-    return Card(
-      child: ListTile(
-        leading: const Icon(Icons.brightness_6),
-        title: const Text('Tema'),
-        trailing: DropdownButton<ThemeMode>(
-          value: settingsProvider.themeMode,
-          onChanged: (ThemeMode? newValue) {
-            if (newValue != null) {
-              settingsProvider.setThemeMode(newValue);
-            }
-          },
-          items: const [
-            DropdownMenuItem(value: ThemeMode.system, child: Text('Sistema')),
-            DropdownMenuItem(value: ThemeMode.light, child: Text('Claro')),
-            DropdownMenuItem(value: ThemeMode.dark, child: Text('Escuro')),
-          ],
-        ),
+    return ListTile(
+      title: const Text('Pontuação Máxima'),
+      subtitle: Text(
+        'Define a pontuação necessária para vencer o set. Atual: ${settingsProvider.maxScore}',
+      ),
+      trailing: DropdownButton<int>(
+        value: settingsProvider.maxScore,
+        items: [15, 21, 25, 30].map((score) {
+          return DropdownMenuItem<int>(
+            value: score,
+            child: Text(score.toString()),
+          );
+        }).toList(),
+        onChanged: (value) {
+          if (value != null) {
+            settingsProvider.setMaxScore(value);
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildTimeoutsSetting(
+    BuildContext context,
+    SettingsProvider settingsProvider,
+  ) {
+    return ListTile(
+      title: const Text('Pedidos de Tempo por Set'),
+      subtitle: Text(
+        'Número de pausas que cada equipe pode solicitar. Atual: ${settingsProvider.timeoutsPerSet}',
+      ),
+      trailing: DropdownButton<int>(
+        value: settingsProvider.timeoutsPerSet,
+        items: [0, 1, 2, 3].map((timeouts) {
+          return DropdownMenuItem<int>(
+            value: timeouts,
+            child: Text(timeouts.toString()),
+          );
+        }).toList(),
+        onChanged: (value) {
+          if (value != null) {
+            settingsProvider.setTimeoutsPerSet(value);
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildTimerDurationSetting(
+    BuildContext context,
+    SettingsProvider settingsProvider,
+  ) {
+    return ListTile(
+      title: const Text('Duração do Cronômetro'),
+      subtitle: Text(
+        'Tempo para pausas e pedidos de tempo (em segundos). Atual: ${settingsProvider.timerDuration}s',
+      ),
+      trailing: DropdownButton<int>(
+        value: settingsProvider.timerDuration,
+        items: [30, 45, 60, 90].map((duration) {
+          return DropdownMenuItem<int>(
+            value: duration,
+            child: Text('$duration s'),
+          );
+        }).toList(),
+        onChanged: (value) {
+          if (value != null) {
+            settingsProvider.setTimerDuration(value);
+          }
+        },
       ),
     );
   }
@@ -128,75 +173,79 @@ class SettingsScreen extends StatelessWidget {
     Color currentColor,
     Function(Color) onColorChanged,
   ) {
-    return Card(
-      child: ListTile(
-        leading: const Icon(Icons.color_lens),
-        title: Text(title),
-        trailing: GestureDetector(
-          onTap: () {
-            showDialog(
-              context: context,
-              builder: (BuildContext context) {
-                return AlertDialog(
-                  title: const Text('Escolha uma cor'),
-                  content: SingleChildScrollView(
-                    child: ColorPicker(
-                      pickerColor: currentColor,
-                      onColorChanged: onColorChanged,
-                      pickerAreaHeightPercent: 0.8,
-                      portraitOnly: true,
-                    ),
-                  ),
-                  actions: <Widget>[
-                    TextButton(
-                      child: const Text('FECHAR'),
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                    ),
-                  ],
-                );
-              },
-            );
-          },
-          child: Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: currentColor,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.grey.shade400, width: 2),
-            ),
-          ),
-        ),
+    return ListTile(
+      title: Text(title),
+      subtitle: const Text('Toque para selecionar a cor'),
+      trailing: ColorIndicator(
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        color: currentColor,
+        onSelect: () async {
+          final newColor = await showColorPickerDialog(
+            context,
+            currentColor,
+            title: Text(title, style: Theme.of(context).textTheme.titleLarge),
+            width: 40,
+            height: 40,
+            spacing: 0,
+            runSpacing: 0,
+            borderRadius: 0,
+            wheelDiameter: 165,
+            enableOpacity: true,
+            showColorCode: true,
+            colorCodeHasColor: true,
+            pickersEnabled: const <ColorPickerType, bool>{
+              ColorPickerType.both: false,
+              ColorPickerType.primary: true,
+              ColorPickerType.accent: true,
+              ColorPickerType.bw: false,
+              ColorPickerType.custom: true,
+              ColorPickerType.wheel: true,
+            },
+          );
+          onColorChanged(newColor);
+        },
       ),
     );
   }
 
-  Widget _buildNumberInput(
+  Widget _buildThemeSetting(
     BuildContext context,
-    String label,
-    String value,
-    Function(String) onChanged,
+    ThemeProvider themeProvider,
   ) {
-    return Card(
-      child: ListTile(
-        leading: const Icon(Icons.format_list_numbered),
-        title: Text(label),
-        trailing: SizedBox(
-          width: 80,
-          child: TextField(
-            controller: TextEditingController(text: value),
-            keyboardType: TextInputType.number,
-            textAlign: TextAlign.center,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 12.0),
-            ),
-            onSubmitted: onChanged,
-          ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Tema do Aplicativo',
+          style: Theme.of(context).textTheme.titleMedium,
         ),
-      ),
+        const SizedBox(height: 8),
+        SegmentedButton<ThemeMode>(
+          segments: const <ButtonSegment<ThemeMode>>[
+            ButtonSegment<ThemeMode>(
+              value: ThemeMode.light,
+              label: Text('Claro'),
+              icon: Icon(Icons.light_mode),
+            ),
+            ButtonSegment<ThemeMode>(
+              value: ThemeMode.dark,
+              label: Text('Escuro'),
+              icon: Icon(Icons.dark_mode),
+            ),
+            ButtonSegment<ThemeMode>(
+              value: ThemeMode.system,
+              label: Text('Sistema'),
+              icon: Icon(Icons.auto_mode),
+            ),
+          ],
+          selected: <ThemeMode>{themeProvider.themeMode},
+          onSelectionChanged: (Set<ThemeMode> newSelection) {
+            themeProvider.setThemeMode(newSelection.first);
+          },
+        ),
+      ],
     );
   }
 }

@@ -12,7 +12,9 @@ class SettingsProvider with ChangeNotifier {
   Color _teamAColor;
   Color _teamBColor;
   Color _fontColor;
-  ThemeMode _themeMode;
+  Color _backgroundColor;
+  Color _scoreFontColorA;
+  Color _scoreFontColorB;
 
   // Chaves para o mapa de configurações
   static const String maxScoreKey = 'max_score';
@@ -21,7 +23,9 @@ class SettingsProvider with ChangeNotifier {
   static const String teamAColorKey = 'team_a_color';
   static const String teamBColorKey = 'team_b_color';
   static const String fontColorKey = 'font_color';
-  static const String themeModeKey = 'theme_mode';
+  static const String backgroundColorKey = 'background_color';
+  static const String scoreFontColorAKey = 'score_font_color_a';
+  static const String scoreFontColorBKey = 'score_font_color_b';
 
   SettingsProvider({
     int maxScore = 25,
@@ -30,14 +34,18 @@ class SettingsProvider with ChangeNotifier {
     Color teamAColor = Colors.red,
     Color teamBColor = Colors.blue,
     Color fontColor = Colors.white,
-    ThemeMode themeMode = ThemeMode.system,
-  }) : _maxScore = maxScore,
-       _timeoutsPerSet = timeoutsPerSet,
-       _timerDuration = timerDuration,
-       _teamAColor = teamAColor,
-       _teamBColor = teamBColor,
-       _fontColor = fontColor,
-       _themeMode = themeMode {
+    Color backgroundColor = Colors.white,
+    Color scoreFontColorA = Colors.black,
+    Color scoreFontColorB = Colors.black,
+  })  : _maxScore = maxScore,
+        _timeoutsPerSet = timeoutsPerSet,
+        _timerDuration = timerDuration,
+        _teamAColor = teamAColor,
+        _teamBColor = teamBColor,
+        _fontColor = fontColor,
+        _backgroundColor = backgroundColor,
+        _scoreFontColorA = scoreFontColorA,
+        _scoreFontColorB = scoreFontColorB {
     _loadSettings();
   }
 
@@ -48,7 +56,9 @@ class SettingsProvider with ChangeNotifier {
   Color get teamAColor => _teamAColor;
   Color get teamBColor => _teamBColor;
   Color get fontColor => _fontColor;
-  ThemeMode get themeMode => _themeMode;
+  Color get backgroundColor => _backgroundColor;
+  Color get scoreFontColorA => _scoreFontColorA;
+  Color get scoreFontColorB => _scoreFontColorB;
 
   // Setters que salvam as preferências
   void setMaxScore(int newScore) {
@@ -87,8 +97,20 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void setThemeMode(ThemeMode newThemeMode) {
-    _themeMode = newThemeMode;
+  void setBackgroundColor(Color newColor) {
+    _backgroundColor = newColor;
+    _saveSettings();
+    notifyListeners();
+  }
+
+  void setScoreFontColorA(Color newColor) {
+    _scoreFontColorA = newColor;
+    _saveSettings();
+    notifyListeners();
+  }
+
+  void setScoreFontColorB(Color newColor) {
+    _scoreFontColorB = newColor;
     _saveSettings();
     notifyListeners();
   }
@@ -101,7 +123,9 @@ class SettingsProvider with ChangeNotifier {
       teamAColorKey: _teamAColor.toARGB32(),
       teamBColorKey: _teamBColor.toARGB32(),
       fontColorKey: _fontColor.toARGB32(),
-      themeModeKey: _themeMode.index,
+      backgroundColorKey: _backgroundColor.toARGB32(),
+      scoreFontColorAKey: _scoreFontColorA.toARGB32(),
+      scoreFontColorBKey: _scoreFontColorB.toARGB32(),
     };
 
     if (kIsWeb) {
@@ -114,33 +138,35 @@ class SettingsProvider with ChangeNotifier {
       await prefs.setInt(teamAColorKey, _teamAColor.toARGB32());
       await prefs.setInt(teamBColorKey, _teamBColor.toARGB32());
       await prefs.setInt(fontColorKey, _fontColor.toARGB32());
-      await prefs.setInt(themeModeKey, _themeMode.index);
+      await prefs.setInt(backgroundColorKey, _backgroundColor.toARGB32());
+      await prefs.setInt(scoreFontColorAKey, _scoreFontColorA.toARGB32());
+      await prefs.setInt(scoreFontColorBKey, _scoreFontColorB.toARGB32());
     }
   }
 
   Future<void> _loadSettings() async {
     if (kIsWeb) {
       final settings = await _settingsService.loadSettings();
-      _maxScore = settings[maxScoreKey] ?? 25;
-      _timeoutsPerSet = settings[timeoutsKey] ?? 2;
-      _timerDuration = settings[timerDurationKey] ?? 30;
-      _teamAColor = Color(settings[teamAColorKey] ?? Colors.red.toARGB32());
-      _teamBColor = Color(settings[teamBColorKey] ?? Colors.blue.toARGB32());
-      _fontColor = Color(settings[fontColorKey] ?? Colors.white.toARGB32());
-      _themeMode =
-          ThemeMode.values[settings[themeModeKey] ?? ThemeMode.system.index];
+      _maxScore = settings[maxScoreKey] as int? ?? 25;
+      _timeoutsPerSet = settings[timeoutsKey] as int? ?? 2;
+      _timerDuration = settings[timerDurationKey] as int? ?? 30;
+      _teamAColor = Color(settings[teamAColorKey] as int? ?? Colors.red.toARGB32());
+      _teamBColor = Color(settings[teamBColorKey] as int? ?? Colors.blue.toARGB32());
+      _fontColor = Color(settings[fontColorKey] as int? ?? Colors.white.toARGB32());
+      _backgroundColor = Color(settings[backgroundColorKey] as int? ?? Colors.white.toARGB32());
+      _scoreFontColorA = Color(settings[scoreFontColorAKey] as int? ?? Colors.black.toARGB32());
+      _scoreFontColorB = Color(settings[scoreFontColorBKey] as int? ?? Colors.black.toARGB32());
     } else {
       final prefs = await SharedPreferences.getInstance();
       _maxScore = prefs.getInt(maxScoreKey) ?? 25;
       _timeoutsPerSet = prefs.getInt(timeoutsKey) ?? 2;
       _timerDuration = prefs.getInt(timerDurationKey) ?? 30;
       _teamAColor = Color(prefs.getInt(teamAColorKey) ?? Colors.red.toARGB32());
-      _teamBColor = Color(
-        prefs.getInt(teamBColorKey) ?? Colors.blue.toARGB32(),
-      );
+      _teamBColor = Color(prefs.getInt(teamBColorKey) ?? Colors.blue.toARGB32());
       _fontColor = Color(prefs.getInt(fontColorKey) ?? Colors.white.toARGB32());
-      final themeIndex = prefs.getInt(themeModeKey) ?? ThemeMode.system.index;
-      _themeMode = ThemeMode.values[themeIndex];
+      _backgroundColor = Color(prefs.getInt(backgroundColorKey) ?? Colors.white.toARGB32());
+      _scoreFontColorA = Color(prefs.getInt(scoreFontColorAKey) ?? Colors.black.toARGB32());
+      _scoreFontColorB = Color(prefs.getInt(scoreFontColorBKey) ?? Colors.black.toARGB32());
     }
     notifyListeners();
   }

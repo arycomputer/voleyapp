@@ -9,12 +9,29 @@ import '../services/file_service_factory.dart';
 class PlayerProvider with ChangeNotifier {
   final List<Jogador> _players = [];
   List<Map<String, dynamic>> _teams = [];
+  int _playersPerTeam = 6;
 
   List<Jogador> get players => _players;
   List<Map<String, dynamic>> get teams => _teams;
+  int get playersPerTeam => _playersPerTeam;
 
   PlayerProvider() {
     loadInitialPlayers();
+  }
+
+  void setPlayersPerTeam(int count) {
+    if (count > 0) {
+      _playersPerTeam = count;
+      notifyListeners();
+    }
+  }
+
+  double getTeamAverageLevel(List<Jogador> team) {
+    if (team.isEmpty) {
+      return 0.0;
+    }
+    final totalLevel = team.fold(0, (sum, player) => sum + player.nivel);
+    return totalLevel / team.length;
   }
 
   Future<void> loadInitialPlayers() async {
@@ -56,6 +73,12 @@ class PlayerProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  void clearPlayers() {
+    _players.clear();
+    _teams.clear();
+    notifyListeners();
+  }
+
   void updatePlayer(Jogador oldPlayer, Jogador newPlayer) {
     final index = _players.indexOf(oldPlayer);
     if (index != -1) {
@@ -64,36 +87,105 @@ class PlayerProvider with ChangeNotifier {
     }
   }
 
-  Future<void> importPlayersFromCsv() async {
+  void movePlayer(Jogador player, String toTeamName) {
+    String? fromTeamName;
+
+    for (final team in _teams) {
+      if ((team['players'] as List<Jogador>).contains(player)) {
+        fromTeamName = team['name'];
+        break;
+      }
+    }
+
+    if (fromTeamName == toTeamName) {
+      return;
+    }
+
+    if (fromTeamName != null) {
+      for (final team in _teams) {
+        if (team['name'] == fromTeamName) {
+          (team['players'] as List<Jogador>).remove(player);
+          break;
+        }
+      }
+    }
+
+    for (final team in _teams) {
+      if (team['name'] == toTeamName) {
+        (team['players'] as List<Jogador>).add(player);
+        break;
+      }
+    }
+
+    notifyListeners();
+  }
+
+ Future<Map<String, dynamic>> importPlayersFromCsv() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['csv'],
     );
 
-    if (result != null && result.files.single.bytes != null) {
-      try {
-        final bytes = result.files.single.bytes!;
-        final csvString = utf8.decode(bytes);
-        final fields = const CsvToListConverter(eol: '\n').convert(csvString);
+    if (result == null || result.files.single.bytes == null) {
+      return {'success': false, 'message': 'Seleção de arquivo cancelada.'};
+    }
 
-        for (var row in fields) {
-          try {
-            final nome = row[0].toString();
-            final nivel = int.parse(row[1].toString());
+    final List<Jogador> newPlayers = [];
+    final List<String> errors = [];
 
-            if (nome.isNotEmpty && nivel >= 1 && nivel <= 5) {
-              _players.add(Jogador(nome: nome, nivel: nivel));
-            } else {
-              debugPrint('Dados inválidos para o jogador: $row');
-            }
-          } catch (e) {
-            debugPrint('Erro ao processar a linha do CSV: $row. Erro: $e');
-          }
+    try {
+      final bytes = result.files.single.bytes!;
+      final csvString = utf8.decode(bytes);
+      final fields = const CsvToListConverter(eol: '\n').convert(csvString);
+
+      // Skip header row by starting at index 1
+      for (int i = 1; i < fields.length; i++) {
+        final row = fields[i];
+        final lineNumber = i + 1;
+
+        if (row.length < 2) {
+          errors.add('Linha $lineNumber: Formato inválido.');
+          continue;
         }
-        notifyListeners();
-      } catch (e) {
-        debugPrint('Erro ao ler ou processar o arquivo CSV: $e');
+
+        try {
+          final nome = row[0].toString().trim();
+          final nivel = int.parse(row[1].toString());
+
+          if (nome.isNotEmpty && nivel >= 1 && nivel <= 5) {
+            newPlayers.add(Jogador(nome: nome, nivel: nivel));
+          } else {
+            errors.add(
+                'Linha $lineNumber: Dados inválidos (Nome: "$nome", Nível: $nivel).');
+          }
+        } on FormatException {
+          errors.add(
+              'Linha $lineNumber: Nível inválido (valor: "${row[1]}"). O nível deve ser um número.');
+        } catch (e) {
+          errors.add(
+              'Linha $lineNumber: Erro inesperado ao processar: $e');
+        }
       }
+
+      if (errors.isNotEmpty) {
+        return {
+          'success': false,
+          'message': 'Encontramos alguns erros no arquivo:',
+          'errors': errors,
+        };
+      } else {
+        _players.addAll(newPlayers);
+        notifyListeners();
+        return {
+          'success': true,
+          'message': '${newPlayers.length} jogadores importados com sucesso!'
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Erro ao ler ou processar o arquivo CSV: $e'
+      };
     }
   }
 
@@ -116,41 +208,34 @@ class PlayerProvider with ChangeNotifier {
   }
 
   void generateTeams() {
-    if (_players.isEmpty) {
+    if (_players.length < _playersPerTeam * 2) {
       _teams = [];
       notifyListeners();
       return;
     }
 
-    // Garante que os jogadores estejam ordenados por nível para uma distribuição mais justa.
     _players.sort((a, b) => b.nivel.compareTo(a.nivel));
 
-    // Define o número máximo de jogadores por time.
-    const maxPlayersPerTeam = 6;
+    final int numTeams = (_players.length / _playersPerTeam).floor();
 
-    // Calcula o número de times, garantindo um mínimo de 2 times se houver jogadores suficientes.
-    int numTeams = (_players.length / maxPlayersPerTeam).ceil();
-    if (_players.length > 1 && numTeams < 2) {
-      numTeams = 2;
-    }
-
-    if (numTeams == 0) {
+    if (numTeams < 2) {
       _teams = [];
       notifyListeners();
       return;
     }
 
-    // Inicializa as equipes com nomes padrão e listas de jogadores vazias.
+    final List<Jogador> playersToDistribute =
+        _players.sublist(0, numTeams * _playersPerTeam);
+
     _teams = List.generate(
       numTeams,
       (index) => {'name': 'Time ${index + 1}', 'players': <Jogador>[]},
     );
 
-    // Distribui os jogadores entre as equipes de forma balanceada.
     int currentTeam = 0;
     bool forward = true;
-    for (final player in _players) {
-      _teams[currentTeam]['players'].add(player);
+    for (final player in playersToDistribute) {
+      (_teams[currentTeam]['players'] as List<Jogador>).add(player);
 
       if (forward) {
         currentTeam++;
@@ -170,11 +255,14 @@ class PlayerProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void renameTeam(int teamIndex, String newName) {
-    if (teamIndex >= 0 && teamIndex < _teams.length) {
-      _teams[teamIndex]['name'] = newName;
-      notifyListeners();
+  void renameTeam(String oldName, String newName) {
+    for (final team in _teams) {
+      if (team['name'] == oldName) {
+        team['name'] = newName;
+        break;
+      }
     }
+    notifyListeners();
   }
 
   void clearTeams() {

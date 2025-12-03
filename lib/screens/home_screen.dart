@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:myapp/screens/placar_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -6,6 +7,10 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Volleyball Scoreboard'),

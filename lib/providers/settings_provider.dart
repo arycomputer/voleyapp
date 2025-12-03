@@ -34,9 +34,9 @@ class SettingsProvider with ChangeNotifier {
     Color teamAColor = Colors.red,
     Color teamBColor = Colors.blue,
     Color fontColor = Colors.white,
-    Color backgroundColor = Colors.white,
-    Color scoreFontColorA = Colors.black,
-    Color scoreFontColorB = Colors.black,
+    Color backgroundColor = Colors.black,
+    Color scoreFontColorA = Colors.white,
+    Color scoreFontColorB = Colors.white,
   })  : _maxScore = maxScore,
         _timeoutsPerSet = timeoutsPerSet,
         _timerDuration = timerDuration,
@@ -153,9 +153,9 @@ class SettingsProvider with ChangeNotifier {
       _teamAColor = Color(settings[teamAColorKey] as int? ?? Colors.red.toARGB32());
       _teamBColor = Color(settings[teamBColorKey] as int? ?? Colors.blue.toARGB32());
       _fontColor = Color(settings[fontColorKey] as int? ?? Colors.white.toARGB32());
-      _backgroundColor = Color(settings[backgroundColorKey] as int? ?? Colors.white.toARGB32());
-      _scoreFontColorA = Color(settings[scoreFontColorAKey] as int? ?? Colors.black.toARGB32());
-      _scoreFontColorB = Color(settings[scoreFontColorBKey] as int? ?? Colors.black.toARGB32());
+      _backgroundColor = Color(settings[backgroundColorKey] as int? ?? Colors.black.toARGB32());
+      _scoreFontColorA = Color(settings[scoreFontColorAKey] as int? ?? Colors.white.toARGB32());
+      _scoreFontColorB = Color(settings[scoreFontColorBKey] as int? ?? Colors.white.toARGB32());
     } else {
       final prefs = await SharedPreferences.getInstance();
       _maxScore = prefs.getInt(maxScoreKey) ?? 25;
@@ -164,9 +164,9 @@ class SettingsProvider with ChangeNotifier {
       _teamAColor = Color(prefs.getInt(teamAColorKey) ?? Colors.red.toARGB32());
       _teamBColor = Color(prefs.getInt(teamBColorKey) ?? Colors.blue.toARGB32());
       _fontColor = Color(prefs.getInt(fontColorKey) ?? Colors.white.toARGB32());
-      _backgroundColor = Color(prefs.getInt(backgroundColorKey) ?? Colors.white.toARGB32());
-      _scoreFontColorA = Color(prefs.getInt(scoreFontColorAKey) ?? Colors.black.toARGB32());
-      _scoreFontColorB = Color(prefs.getInt(scoreFontColorBKey) ?? Colors.black.toARGB32());
+      _backgroundColor = Color(prefs.getInt(backgroundColorKey) ?? Colors.black.toARGB32());
+      _scoreFontColorA = Color(prefs.getInt(scoreFontColorAKey) ?? Colors.white.toARGB32());
+      _scoreFontColorB = Color(prefs.getInt(scoreFontColorBKey) ?? Colors.white.toARGB32());
     }
     notifyListeners();
   }

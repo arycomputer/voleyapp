@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flex_color_picker/flex_color_picker.dart';
 import '../providers/settings_provider.dart';
@@ -9,6 +10,10 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
     final settingsProvider = Provider.of<SettingsProvider>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
 

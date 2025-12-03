@@ -35,10 +35,18 @@ class PlacarScreenState extends State<PlacarScreen> {
   @override
   void initState() {
     super.initState();
+    _setLandscape();
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     final teams = playerProvider.teams;
     _teamAName = teams.isNotEmpty ? teams[0]['name'] : "Time A";
     _teamBName = teams.length > 1 ? teams[1]['name'] : "Time B";
+  }
+
+  Future<void> _setLandscape() async {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeRight,
+      DeviceOrientation.landscapeLeft,
+    ]);
   }
 
   void startTimer() {
@@ -139,6 +147,7 @@ class PlacarScreenState extends State<PlacarScreen> {
   }
 
   void _showSetWinnerNotification(String winnerName) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('$winnerName venceu o set!'),
@@ -146,7 +155,9 @@ class PlacarScreenState extends State<PlacarScreen> {
         action: SnackBarAction(
           label: 'NOVO SET',
           onPressed: () {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            if (mounted) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            }
             _resetScores();
           },
         ),
@@ -155,6 +166,7 @@ class PlacarScreenState extends State<PlacarScreen> {
   }
 
   void _showGameWinnerNotification(String winnerName) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('$winnerName venceu o jogo!'),
@@ -162,7 +174,9 @@ class PlacarScreenState extends State<PlacarScreen> {
         action: SnackBarAction(
           label: 'NOVO JOGO',
           onPressed: () {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            if (mounted) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            }
             _resetGame();
           },
         ),
@@ -216,6 +230,7 @@ class PlacarScreenState extends State<PlacarScreen> {
               onPressed: () {
                 Navigator.of(context).pop();
                 _resetGame();
+                if (!mounted) return;
                 ScaffoldMessenger.of(context).hideCurrentSnackBar();
               },
             ),
@@ -301,6 +316,7 @@ class PlacarScreenState extends State<PlacarScreen> {
                   ),
                   onTap: () {
                     if (isSelected) {
+                      if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Este time já está selecionado.'),
@@ -327,13 +343,15 @@ class PlacarScreenState extends State<PlacarScreen> {
     );
   }
 
-  void _navigateToTeamManagement() async {
+  Future<void> _navigateToTeamManagement() async {
+    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const TeamManagementScreen()),
     );
     if (!mounted) return;
-    final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+    await _setLandscape();
+
     if (playerProvider.teams.isNotEmpty) {
       setState(() {
         _teamAName = playerProvider.teams[0]['name'] ?? "Time A";
@@ -344,15 +362,30 @@ class PlacarScreenState extends State<PlacarScreen> {
     }
   }
 
+  Future<void> _navigateToSettings() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SettingsScreen()),
+    );
+    if (!mounted) return;
+    await _setLandscape();
+  }
+
+  Future<void> _navigateToTeamBuilder() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const TeamBuilderScreen()),
+    );
+    if (!mounted) return;
+    await _setLandscape();
+  }
+
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
     final settingsProvider = Provider.of<SettingsProvider>(context);
 
     return Scaffold(
+      backgroundColor: settingsProvider.backgroundColor,
       body: SafeArea(
         child: Stack(
           children: [
@@ -397,6 +430,8 @@ class PlacarScreenState extends State<PlacarScreen> {
   }
 
   Widget _buildMiddleColumn() {
+    final settingsProvider = Provider.of<SettingsProvider>(context);
+
     return Expanded(
       flex: 6,
       child: Column(
@@ -406,53 +441,44 @@ class PlacarScreenState extends State<PlacarScreen> {
             fit: BoxFit.scaleDown,
             child: Text(
               _timerString,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 48,
                 fontWeight: FontWeight.bold,
-                fontFeatures: [FontFeature.tabularFigures()],
+                fontFeatures: const [FontFeature.tabularFigures()],
+                color: settingsProvider.fontColor,
               ),
             ),
           ),
           IconButton(
-            icon: Icon(_isTimerRunning ? Icons.pause : Icons.play_arrow),
-            iconSize: 30.0,
-            onPressed: () {
-              if (_isTimerRunning) {
-                pauseTimer();
-              } else {
-                startTimer();
-              }
-            },
+            icon: Icon(_isTimerRunning ? Icons.pause : Icons.play_arrow, color: settingsProvider.fontColor),
+            onPressed: _isTimerRunning ? pauseTimer : startTimer,
           ),
           IconButton(
-            icon: const Icon(Icons.restart_alt),
+            icon: Icon(Icons.restart_alt, color: settingsProvider.fontColor),
             onPressed: _showResetGameConfirmationDialog,
           ),
           IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
-            },
+            icon: Icon(Icons.settings, color: settingsProvider.fontColor),
+            onPressed: _navigateToSettings,
+          ),
+          // IconButton(
+          //   icon: Icon(Icons.people, color: settingsProvider.fontColor),
+          //   onPressed: () {
+          //     Navigator.push(
+          //       context,
+          //       MaterialPageRoute(
+          //         builder: (context) => const TeamManagementScreen(),
+          //       ),
+          //     );
+          //   },
+          // ),
+          IconButton(
+            icon: Icon(Icons.manage_accounts, color: settingsProvider.fontColor),
+            onPressed: _navigateToTeamManagement,
           ),
           IconButton(
-            icon: const Icon(Icons.manage_accounts),
-            onPressed: () {
-              _navigateToTeamManagement();
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.group_add),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const TeamBuilderScreen(),
-                ),
-              );
-            },
+            icon: Icon(Icons.group_add, color: settingsProvider.fontColor),
+            onPressed: _navigateToTeamBuilder,
           ),
         ],
       ),

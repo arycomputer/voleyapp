@@ -23,60 +23,22 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<ThemeProvider, SettingsProvider>(
-      builder: (context, themeProvider, settingsProvider, child) {
-        final fontColor = settingsProvider.fontColor;
-        final backgroundColor = settingsProvider.backgroundColor;
-
-        TextTheme createTextTheme(TextTheme base, Color color) {
-          return base.apply(
-            bodyColor: color,
-            displayColor: color,
-          );
-        }
-
-        final lightBase = ThemeData.light();
-        final lightTheme = lightBase.copyWith(
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        final lightTheme = ThemeData(
+          useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
           visualDensity: VisualDensity.adaptivePlatformDensity,
-          scaffoldBackgroundColor: backgroundColor,
-          textTheme: createTextTheme(lightBase.textTheme, fontColor),
-          appBarTheme: AppBarTheme(
-            backgroundColor: Colors.blue.shade600,
-            titleTextStyle: TextStyle(
-              color: fontColor,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-            iconTheme: IconThemeData(color: fontColor),
-          ),
-          bottomNavigationBarTheme: BottomNavigationBarThemeData(
-            selectedItemColor: Colors.blue.shade800,
-            unselectedItemColor: Colors.grey.shade600,
-          ),
-          iconTheme: IconThemeData(color: fontColor),
         );
 
-        final darkBase = ThemeData.dark();
-        final darkTheme = darkBase.copyWith(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),
+        final darkTheme = ThemeData(
+          useMaterial3: true,
+          brightness: Brightness.dark,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.orange,
+            brightness: Brightness.dark,
+          ),
           visualDensity: VisualDensity.adaptivePlatformDensity,
-          scaffoldBackgroundColor: backgroundColor,
-          textTheme: createTextTheme(darkBase.textTheme, fontColor),
-          appBarTheme: AppBarTheme(
-            backgroundColor: Colors.grey[900],
-            titleTextStyle: TextStyle(
-              color: fontColor,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-            iconTheme: IconThemeData(color: fontColor),
-          ),
-          bottomNavigationBarTheme: BottomNavigationBarThemeData(
-            selectedItemColor: Colors.orange.shade400,
-            unselectedItemColor: Colors.grey.shade600,
-          ),
-          iconTheme: IconThemeData(color: fontColor),
         );
 
         return MaterialApp(

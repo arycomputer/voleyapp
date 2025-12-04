@@ -472,10 +472,10 @@ class PlacarScreenState extends State<PlacarScreen> {
           //     );
           //   },
           // ),
-          IconButton(
-            icon: Icon(Icons.manage_accounts, color: settingsProvider.fontColor),
-            onPressed: _navigateToTeamManagement,
-          ),
+          // IconButton(
+          //   icon: Icon(Icons.manage_accounts, color: settingsProvider.fontColor),
+          //   onPressed: _navigateToTeamManagement,
+          // ),
           IconButton(
             icon: Icon(Icons.group_add, color: settingsProvider.fontColor),
             onPressed: _navigateToTeamBuilder,

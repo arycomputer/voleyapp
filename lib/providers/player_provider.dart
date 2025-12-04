@@ -34,6 +34,15 @@ class PlayerProvider with ChangeNotifier {
     return totalLevel / team.length;
   }
 
+  String? getTeamForPlayer(Jogador player) {
+    for (final team in _teams) {
+      if ((team['players'] as List<Jogador>).contains(player)) {
+        return team['name'];
+      }
+    }
+    return null;
+  }
+
   Future<void> loadInitialPlayers() async {
     try {
       final rawData = await rootBundle.loadString(
@@ -120,7 +129,50 @@ class PlayerProvider with ChangeNotifier {
     notifyListeners();
   }
 
- Future<Map<String, dynamic>> importPlayersFromCsv() async {
+  void swapPlayers(Jogador player1, Jogador player2) {
+    String? teamName1;
+    String? teamName2;
+    int? index1;
+    int? index2;
+
+    for (final team in _teams) {
+      final players = team['players'] as List<Jogador>;
+      if (players.contains(player1)) {
+        teamName1 = team['name'];
+        index1 = players.indexOf(player1);
+      }
+      if (players.contains(player2)) {
+        teamName2 = team['name'];
+        index2 = players.indexOf(player2);
+      }
+    }
+
+    if (teamName1 != null &&
+        teamName2 != null &&
+        index1 != null &&
+        index2 != null &&
+        teamName1 != teamName2) {
+      for (final team in _teams) {
+        if (team['name'] == teamName1) {
+          final players = team['players'] as List<Jogador>;
+          players.removeAt(index1);
+          players.insert(index1, player2);
+        }
+      }
+
+      for (final team in _teams) {
+        if (team['name'] == teamName2) {
+          final players = team['players'] as List<Jogador>;
+          players.removeAt(index2);
+          players.insert(index2, player1);
+        }
+      }
+
+      notifyListeners();
+    }
+  }
+
+  Future<Map<String, dynamic>> importPlayersFromCsv() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['csv'],
@@ -136,9 +188,9 @@ class PlayerProvider with ChangeNotifier {
     try {
       final bytes = result.files.single.bytes!;
       final csvString = utf8.decode(bytes);
-      final fields = const CsvToListConverter(eol: '\n').convert(csvString);
+      final normalizedCsv = csvString.replaceAll('\r\n', '\n');
+      final fields = const CsvToListConverter(eol: '\n').convert(normalizedCsv);
 
-      // Skip header row by starting at index 1
       for (int i = 1; i < fields.length; i++) {
         final row = fields[i];
         final lineNumber = i + 1;
@@ -208,7 +260,7 @@ class PlayerProvider with ChangeNotifier {
   }
 
   void generateTeams() {
-    if (_players.length < _playersPerTeam * 2) {
+    if (_players.length < _playersPerTeam) {
       _teams = [];
       notifyListeners();
       return;
@@ -218,7 +270,7 @@ class PlayerProvider with ChangeNotifier {
 
     final int numTeams = (_players.length / _playersPerTeam).floor();
 
-    if (numTeams < 2) {
+    if (numTeams < 1) {
       _teams = [];
       notifyListeners();
       return;

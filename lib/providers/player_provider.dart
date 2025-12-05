@@ -269,6 +269,7 @@ class PlayerProvider with ChangeNotifier {
     _players.sort((a, b) => b.nivel.compareTo(a.nivel));
 
     final int numTeams = (_players.length / _playersPerTeam).floor();
+    final int remainingPlayers = _players.length % _playersPerTeam;
 
     if (numTeams < 1) {
       _teams = [];
@@ -276,8 +277,7 @@ class PlayerProvider with ChangeNotifier {
       return;
     }
 
-    final List<Jogador> playersToDistribute =
-        _players.sublist(0, numTeams * _playersPerTeam);
+    final List<Jogador> playersToDistribute = List.from(_players);
 
     _teams = List.generate(
       numTeams,
@@ -286,7 +286,8 @@ class PlayerProvider with ChangeNotifier {
 
     int currentTeam = 0;
     bool forward = true;
-    for (final player in playersToDistribute) {
+    for (int i = 0; i < numTeams * _playersPerTeam; i++) {
+      final player = playersToDistribute[i];
       (_teams[currentTeam]['players'] as List<Jogador>).add(player);
 
       if (forward) {
@@ -302,6 +303,14 @@ class PlayerProvider with ChangeNotifier {
           currentTeam++;
         }
       }
+    }
+
+    if (remainingPlayers > 0) {
+      final remainingPlayersList = playersToDistribute.sublist(numTeams * _playersPerTeam);
+      _teams.add({
+        'name': 'Time ${numTeams + 1}',
+        'players': remainingPlayersList,
+      });
     }
 
     notifyListeners();

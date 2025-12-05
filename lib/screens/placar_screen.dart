@@ -387,43 +387,51 @@ class PlacarScreenState extends State<PlacarScreen> {
     return Scaffold(
       backgroundColor: settingsProvider.backgroundColor,
       body: SafeArea(
-        child: Stack(
-          children: [
-            Row(
+        child: Consumer<PlayerProvider>(
+          builder: (context, playerProvider, child) {
+            final teams = playerProvider.teams;
+            _teamAName = teams.isNotEmpty ? teams[0]['name'] : "Time A";
+            _teamBName = teams.length > 1 ? teams[1]['name'] : "Time B";
+
+            return Stack(
               children: [
-                _buildTeamColumn(
-                  0,
-                  _teamAName,
-                  _scoreA,
-                  _setsA,
-                  settingsProvider.teamAColor,
-                  settingsProvider.fontColor,
-                  settingsProvider.scoreFontColorA,
-                  settingsProvider.timeoutsPerSet,
+                Row(
+                  children: [
+                    _buildTeamColumn(
+                      0,
+                      _teamAName,
+                      _scoreA,
+                      _setsA,
+                      settingsProvider.teamAColor,
+                      settingsProvider.fontColor,
+                      settingsProvider.scoreFontColorA,
+                      settingsProvider.timeoutsPerSet,
+                    ),
+                    _buildMiddleColumn(),
+                    _buildTeamColumn(
+                      1,
+                      _teamBName,
+                      _scoreB,
+                      _setsB,
+                      settingsProvider.teamBColor,
+                      settingsProvider.fontColor,
+                      settingsProvider.scoreFontColorB,
+                      settingsProvider.timeoutsPerSet,
+                    ),
+                  ],
                 ),
-                _buildMiddleColumn(),
-                _buildTeamColumn(
-                  1,
-                  _teamBName,
-                  _scoreB,
-                  _setsB,
-                  settingsProvider.teamBColor,
-                  settingsProvider.fontColor,
-                  settingsProvider.scoreFontColorB,
-                  settingsProvider.timeoutsPerSet,
-                ),
+                if (_isCountdownVisible)
+                  Consumer<SettingsProvider>(
+                    builder: (context, settings, child) {
+                      return TimerWidget(
+                        duration: settings.timerDuration,
+                        onTimerFinish: _hideCountdown,
+                      );
+                    },
+                  ),
               ],
-            ),
-            if (_isCountdownVisible)
-              Consumer<SettingsProvider>(
-                builder: (context, settings, child) {
-                  return TimerWidget(
-                    duration: settings.timerDuration,
-                    onTimerFinish: _hideCountdown,
-                  );
-                },
-              ),
-          ],
+            );
+          },
         ),
       ),
     );

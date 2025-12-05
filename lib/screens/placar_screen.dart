@@ -24,7 +24,7 @@ class PlacarScreenState extends State<PlacarScreen> {
   int _timeoutsA = 0;
   int _timeoutsB = 0;
   Timer? _timer;
-  int _start = 300;
+  int _start = 0;
   late String _teamAName;
   late String _teamBName;
   bool _isTimerRunning = false;
@@ -55,16 +55,9 @@ class PlacarScreenState extends State<PlacarScreen> {
       _isTimerRunning = true;
     });
     _timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) {
-      if (_start == 0) {
-        setState(() {
-          timer.cancel();
-          _isTimerRunning = false;
-        });
-      } else {
-        setState(() {
-          _start--;
-        });
-      }
+      setState(() {
+        _start++;
+      });
     });
   }
 
@@ -242,7 +235,7 @@ class PlacarScreenState extends State<PlacarScreen> {
 
   void _resetTimer() {
     setState(() {
-      _start = 300;
+      _start = 0;
     });
   }
 

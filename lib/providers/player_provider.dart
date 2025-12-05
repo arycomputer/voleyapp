@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
@@ -266,7 +267,27 @@ class PlayerProvider with ChangeNotifier {
       return;
     }
 
-    _players.sort((a, b) => b.nivel.compareTo(a.nivel));
+    // 1. Agrupar jogadores por nível
+    final Map<int, List<Jogador>> playersByLevel = {};
+    for (final player in _players) {
+      if (!playersByLevel.containsKey(player.nivel)) {
+        playersByLevel[player.nivel] = [];
+      }
+      playersByLevel[player.nivel]!.add(player);
+    }
+
+    // 2. Embaralhar jogadores dentro de cada grupo de nível
+    final random = Random();
+    for (final playerList in playersByLevel.values) {
+      playerList.shuffle(random);
+    }
+
+    // 3. Criar a lista final de jogadores, ordenada por nível mas embaralhada dentro dos níveis
+    final List<Jogador> playersToDistribute = [];
+    final sortedLevels = playersByLevel.keys.toList()..sort((a, b) => b.compareTo(a));
+    for (final level in sortedLevels) {
+      playersToDistribute.addAll(playersByLevel[level]!);
+    }
 
     final int numTeams = (_players.length / _playersPerTeam).floor();
     final int remainingPlayers = _players.length % _playersPerTeam;
@@ -276,8 +297,6 @@ class PlayerProvider with ChangeNotifier {
       notifyListeners();
       return;
     }
-
-    final List<Jogador> playersToDistribute = List.from(_players);
 
     _teams = List.generate(
       numTeams,
@@ -315,6 +334,7 @@ class PlayerProvider with ChangeNotifier {
 
     notifyListeners();
   }
+
 
   void renameTeam(String oldName, String newName) {
     for (final team in _teams) {

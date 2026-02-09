@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../models/jogador.dart';
+import '../models/player.dart';
 import '../providers/player_provider.dart';
 
 class TeamBuilderScreen extends StatefulWidget {
@@ -21,10 +21,10 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> {
         Provider.of<PlayerProvider>(context, listen: false).playersPerTeam;
   }
 
-  Color _getColorForNivel(int nivel) {
-    if (nivel <= 2) {
+  Color _getColorForLevel(int level) {
+    if (level <= 2) {
       return Colors.red.withAlpha(77);
-    } else if (nivel <= 4) {
+    } else if (level <= 4) {
       return Colors.yellow.withAlpha(77);
     } else {
       return Colors.green.withAlpha(77);
@@ -39,7 +39,10 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> {
     ]);
     final playerProvider = Provider.of<PlayerProvider>(context);
 
-    final bool canGenerateTeams = playerProvider.players.length >= _selectedPlayersPerTeam;
+    final availablePlayers =
+        playerProvider.players.where((p) => p.isAvailable).toList();
+    final bool canGenerateTeams =
+        availablePlayers.length >= _selectedPlayersPerTeam;
     final int requiredPlayers = _selectedPlayersPerTeam;
 
     return Scaffold(
@@ -50,7 +53,7 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> {
             Navigator.pop(context);
           },
         ),
-        title: const Text('Gerenciar Jogadores'),
+        title: const Text('Gerenciar Times'),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -110,14 +113,11 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> {
                       onPressed: canGenerateTeams
                           ? () {
                               playerProvider.generateTeams();
-                              if (playerProvider.teams.isNotEmpty) {
-                                //Navigator.pop(context);
-                              } else {
-                                if (!mounted) return;
+                              if (playerProvider.teams.isEmpty && mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text(
-                                        'Não há jogadores suficientes para formar pelo menos um time.'),
+                                        'Não há jogadores disponíveis suficientes para formar um time.'),
                                     backgroundColor: Colors.red,
                                   ),
                                 );
@@ -144,8 +144,9 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> {
                   Padding(
                     padding: const EdgeInsets.only(top: 12.0),
                     child: Text(
-                      'São necessários pelo menos $requiredPlayers jogadores para gerar os times.',
-                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      'São necessários pelo menos $requiredPlayers jogadores disponíveis para gerar os times.',
+                      style:
+                          TextStyle(color: Theme.of(context).colorScheme.error),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -209,97 +210,94 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> {
   }
 
   Widget _buildTeams(BuildContext context, PlayerProvider playerProvider) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: playerProvider.teams.map((teamData) {
+    return ListView.builder(
+      itemCount: playerProvider.teams.length,
+      itemBuilder: (context, index) {
+        final teamData = playerProvider.teams[index];
         final teamName = teamData['name'] as String;
-        final team = teamData['players'] as List<Jogador>;
+        final team = teamData['players'] as List<Player>;
         final averageLevel = playerProvider.getTeamAverageLevel(team);
 
-        return Expanded(
-          child: DragTarget<Jogador>(
-            onWillAcceptWithDetails: (details) {
-              final draggedPlayerTeam = playerProvider.getTeamForPlayer(details.data);
-              return draggedPlayerTeam != teamName;
-            },
-            onAcceptWithDetails: (details) {
-              playerProvider.movePlayer(details.data, teamName);
-            },
-            builder: (context, candidateData, rejectedData) {
-              return Card(
-                elevation: 4,
-                margin: const EdgeInsets.all(8),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              teamName,
-                              style: Theme.of(context).textTheme.titleLarge,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+        return DragTarget<Player>(
+          onWillAcceptWithDetails: (details) {
+            final draggedPlayerTeam =
+                playerProvider.getTeamForPlayer(details.data);
+            return draggedPlayerTeam != teamName;
+          },
+          onAcceptWithDetails: (details) {
+            playerProvider.movePlayer(details.data, teamName);
+          },
+          builder: (context, candidateData, rejectedData) {
+            return Card(
+              elevation: 4,
+              margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            teamName,
+                            style: Theme.of(context).textTheme.titleLarge,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.edit, size: 20),
-                            onPressed: () => _showEditTeamNameDialog(
-                                context, playerProvider, teamName),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.edit, size: 20),
+                          onPressed: () => _showEditTeamNameDialog(
+                              context, playerProvider, teamName),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Text(
+                      'Nível: ${averageLevel.toStringAsFixed(1)}',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: team.length,
+                    itemBuilder: (context, index) {
+                      final player = team[index];
+                      return Draggable<Player>(
+                        data: player,
+                        feedback: Card(
+                          elevation: 4,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(player.name,
+                                style: Theme.of(context).textTheme.bodyLarge),
                           ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Text(
-                        'Nível: ${averageLevel.toStringAsFixed(1)}',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: team.length,
-                        itemBuilder: (context, index) {
-                          final player = team[index];
-                          return Draggable<Jogador>(
-                            data: player,
-                            feedback: Card(
-                              elevation: 4,
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Text(player.nome),
-                              ),
-                            ),
-                            childWhenDragging: Container(),
-                            child: DragTarget<Jogador>(
-                              onWillAcceptWithDetails: (details) {
-                                final draggedPlayer = details.data;
-                                return player != draggedPlayer;
-                              },
-                              onAcceptWithDetails: (details) {
-                                playerProvider.swapPlayers(details.data, player);
-                              },
-                              builder: (context, candidateData, rejectedData) {
-                                return ListTile(
-                                  tileColor: _getColorForNivel(player.nivel),
-                                  title: Text(player.nome),
-                                  subtitle: Text('Nível: ${player.nivel}'),
-                                );
-                              },
-                            ),
+                        ),
+                        childWhenDragging: Container(),
+                        child: DragTarget<Player>(
+                            onWillAcceptWithDetails: (details) {
+                          return player != details.data;
+                        }, onAcceptWithDetails: (details) {
+                          playerProvider.swapPlayers(details.data, player);
+                        }, builder: (context, candidateData, rejectedData) {
+                          return ListTile(
+                            tileColor: _getColorForLevel(player.level),
+                            title: Text('${player.name} (${player.level})'),
                           );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
+                        }),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
         );
-      }).toList(),
+      },
     );
   }
 
@@ -337,7 +335,8 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> {
     );
   }
 
-  Widget _buildPlayersList(BuildContext context, PlayerProvider playerProvider) {
+  Widget _buildPlayersList(
+      BuildContext context, PlayerProvider playerProvider) {
     if (playerProvider.players.isEmpty) {
       return const Center(
         child: Text(
@@ -352,12 +351,24 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> {
       itemBuilder: (context, index) {
         final player = playerProvider.players[index];
         return ListTile(
-          tileColor: _getColorForNivel(player.nivel),
-          title: Text(player.nome),
+          tileColor: _getColorForLevel(player.level),
+          title: Text(player.name),
+          subtitle: Text('Posição: ${player.position}'),
+          leading: Checkbox(
+              value: player.isAvailable,
+              onChanged: (value) {
+                if (value == null) return;
+                final updatedPlayer = Player(
+                    name: player.name,
+                    level: player.level,
+                    position: player.position,
+                    isAvailable: value);
+                playerProvider.updatePlayer(player, updatedPlayer);
+              }),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Nível: ${player.nivel}'),
+              Text('Nível: ${player.level}'),
               IconButton(
                 icon: const Icon(Icons.edit),
                 onPressed: () =>
@@ -378,7 +389,7 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> {
   void _showDeleteConfirmationDialog(
     BuildContext context,
     PlayerProvider playerProvider,
-    Jogador player,
+    Player player,
   ) {
     showDialog(
       context: context,
@@ -386,7 +397,7 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> {
         return AlertDialog(
           title: const Text('Confirmar Exclusão'),
           content: Text(
-              'Você tem certeza que deseja excluir o jogador "${player.nome}"?'),
+              'Você tem certeza que deseja excluir o jogador "${player.name}"?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -410,6 +421,7 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> {
     PlayerProvider playerProvider,
   ) {
     final nameController = TextEditingController();
+    final positionController = TextEditingController();
     double currentLevel = 3.0;
 
     showDialog(
@@ -428,6 +440,10 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> {
                       decoration: const InputDecoration(labelText: 'Nome'),
                       autofocus: true,
                     ),
+                    TextField(
+                      controller: positionController,
+                      decoration: const InputDecoration(labelText: 'Posição'),
+                    ),
                     const SizedBox(height: 20),
                     Text('Nível: ${currentLevel.round()}'),
                     Slider(
@@ -455,10 +471,15 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> {
             TextButton(
               onPressed: () {
                 final name = nameController.text;
+                final position = positionController.text;
                 final level = currentLevel.round();
 
                 if (name.isNotEmpty) {
-                  playerProvider.addPlayer(Jogador(nome: name, nivel: level));
+                  playerProvider.addPlayer(Player(
+                      name: name,
+                      level: level,
+                      position:
+                          position.isNotEmpty ? position : 'Não especificado'));
                   Navigator.of(context).pop();
                 }
               },
@@ -473,10 +494,11 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> {
   void _showEditPlayerDialog(
     BuildContext context,
     PlayerProvider playerProvider,
-    Jogador oldPlayer,
+    Player oldPlayer,
   ) {
-    final nameController = TextEditingController(text: oldPlayer.nome);
-    double currentLevel = oldPlayer.nivel.toDouble();
+    final nameController = TextEditingController(text: oldPlayer.name);
+    final positionController = TextEditingController(text: oldPlayer.position);
+    double currentLevel = oldPlayer.level.toDouble();
 
     showDialog(
       context: context,
@@ -494,6 +516,10 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> {
                       decoration: const InputDecoration(labelText: 'Nome'),
                       autofocus: true,
                     ),
+                    TextField(
+                      controller: positionController,
+                      decoration: const InputDecoration(labelText: 'Posição'),
+                    ),
                     const SizedBox(height: 20),
                     Text('Nível: ${currentLevel.round()}'),
                     Slider(
@@ -521,10 +547,18 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> {
             TextButton(
               onPressed: () {
                 final name = nameController.text;
+                final position = positionController.text;
                 final level = currentLevel.round();
 
                 if (name.isNotEmpty) {
-                  final newPlayer = Jogador(nome: name, nivel: level);
+                  final newPlayer = Player(
+                    name: name,
+                    level: level,
+                    position:
+                        position.isNotEmpty ? position : 'Não especificado',
+                    isAvailable: oldPlayer
+                        .isAvailable, // Preserve the isAvailable status
+                  );
                   playerProvider.updatePlayer(oldPlayer, newPlayer);
                   Navigator.of(context).pop();
                 }
@@ -551,7 +585,8 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> {
           content: TextField(
             controller: textController,
             decoration: const InputDecoration(
-              labelText: 'Cole os nomes, um por linha',
+              labelText: 'Cole os jogadores, um por linha',
+              hintText: 'Nome,Nível,Posição (opcional)',
               alignLabelWithHint: true,
             ),
             maxLines: 10,
@@ -573,9 +608,19 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> {
                   for (var line in lines) {
                     final parts = line.split(',');
                     final name = parts[0].trim();
-                    final nivel = parts.length > 1 ? int.tryParse(parts[1].trim()) ?? 3 : 3;
-                    playerProvider.addPlayer(
-                        Jogador(nome: name, nivel: nivel));
+                    if (name.isNotEmpty) {
+                      final level = parts.length > 1
+                          ? int.tryParse(parts[1].trim()) ?? 3
+                          : 3;
+                      final position = parts.length > 2
+                          ? parts[2].trim()
+                          : 'Não especificado';
+                      playerProvider.addPlayer(Player(
+                          name: name,
+                          level: level,
+                          position: position,
+                          isAvailable: true));
+                    }
                   }
                   Navigator.of(context).pop();
                 }

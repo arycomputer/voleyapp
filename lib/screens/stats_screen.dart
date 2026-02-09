@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/jogador.dart';
+import '../models/player.dart';
 import '../providers/player_provider.dart';
 
 class StatsScreen extends StatelessWidget {
@@ -49,12 +49,12 @@ class PlayerStatsTab extends StatelessWidget {
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           child: ListTile(
-            leading: CircleAvatar(child: Text(player.nivel.toString())),
+            leading: CircleAvatar(child: Text(player.level.toString())),
             title: Text(
-              player.nome,
+              player.name,
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            subtitle: Text('Nível: ${player.nivel}'),
+            subtitle: Text('Nível: ${player.level}'),
           ),
         );
       },
@@ -83,10 +83,10 @@ class TeamStatsTab extends StatelessWidget {
       itemBuilder: (context, index) {
         final teamData = teams[index];
         final String teamName = teamData['name'];
-        final List<Jogador> players = teamData['players'] as List<Jogador>;
+        final List<Player> players = teamData['players'] as List<Player>;
 
         final teamAverage = players.isNotEmpty
-            ? players.map((p) => p.nivel).reduce((a, b) => a + b) /
+            ? players.map((p) => p.level).reduce((a, b) => a + b) /
                   players.length
             : 0.0;
 
@@ -107,8 +107,8 @@ class TeamStatsTab extends StatelessWidget {
                 const Divider(),
                 ...players.map(
                   (player) => ListTile(
-                    leading: CircleAvatar(child: Text(player.nivel.toString())),
-                    title: Text(player.nome),
+                    leading: CircleAvatar(child: Text(player.level.toString())),
+                    title: Text(player.name),
                     dense: true,
                   ),
                 ),

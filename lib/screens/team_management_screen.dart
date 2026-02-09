@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/jogador.dart';
+import '../models/player.dart';
 import '../providers/player_provider.dart';
 
 class TeamManagementScreen extends StatelessWidget {
@@ -24,8 +24,8 @@ class TeamManagementScreen extends StatelessWidget {
             itemCount: playerProvider.teams.length,
             itemBuilder: (context, index) {
               final team = playerProvider.teams[index];
-              final players = team['players'] as List<Jogador>;
-              final teamLevel = players.fold(0, (sum, player) => sum + player.nivel);
+              final players = team['players'] as List<Player>;
+              final teamLevel = players.fold(0, (sum, player) => sum + player.level);
 
               return Card(
                 margin: const EdgeInsets.all(12.0),
@@ -55,8 +55,11 @@ class TeamManagementScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      ...players.map((player) => Text(
-                            '  - ${player.nome} (Nível: ${player.nivel})',
+                      ...players.map((player) => Padding(
+                            padding: const EdgeInsets.only(top: 4.0),
+                            child: Text(
+                              '  - ${player.name} (Nível: ${player.level})',
+                            ),
                           )),
                     ],
                   ),

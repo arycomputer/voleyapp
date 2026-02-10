@@ -13,12 +13,14 @@ class TeamBuilderScreen extends StatefulWidget {
 
 class _TeamBuilderScreenState extends State<TeamBuilderScreen> {
   late int _selectedPlayersPerTeam;
+  late int _numberOfTeams;
 
   @override
   void initState() {
     super.initState();
     _selectedPlayersPerTeam =
         Provider.of<PlayerProvider>(context, listen: false).playersPerTeam;
+    _numberOfTeams = 2;
   }
 
   Color _getColorForLevel(int level) {
@@ -42,8 +44,8 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> {
     final availablePlayers =
         playerProvider.players.where((p) => p.isAvailable).toList();
     final bool canGenerateTeams =
-        availablePlayers.length >= _selectedPlayersPerTeam;
-    final int requiredPlayers = _selectedPlayersPerTeam;
+        availablePlayers.length >= _selectedPlayersPerTeam * _numberOfTeams;
+    final int requiredPlayers = _selectedPlayersPerTeam * _numberOfTeams;
 
     return Scaffold(
       appBar: AppBar(
@@ -103,6 +105,29 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> {
                     ),
                   ],
                 ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('Quantidade de times:'),
+                    const SizedBox(width: 16),
+                    DropdownButton<int>(
+                      value: _numberOfTeams,
+                      items: List.generate(5, (index) => index + 2)
+                          .map((e) => DropdownMenuItem<int>(
+                                value: e,
+                                child: Text(e.toString()),
+                              ))
+                          .toList(),
+                      onChanged: (newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            _numberOfTeams = newValue;
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -112,7 +137,8 @@ class _TeamBuilderScreenState extends State<TeamBuilderScreen> {
                       label: const Text('Gerar Times'),
                       onPressed: canGenerateTeams
                           ? () {
-                              playerProvider.generateTeams();
+                              playerProvider.generateTeams(
+                                  numberOfTeams: _numberOfTeams);
                               if (playerProvider.teams.isEmpty && mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
